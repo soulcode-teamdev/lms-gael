@@ -76,7 +76,7 @@ const CertificadoGeral: React.FC = () => {
               cohortid: 160,
               subcourse_scope: 'all',
               scope: 'cohort',
-              // exclude_courses: '513,514'
+              exclude_courses: '513,514'
             }
           }
         );
