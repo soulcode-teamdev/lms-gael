@@ -1,5 +1,5 @@
 import { Button, Modal } from "react-bootstrap";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 import { AuthContext } from "@/contexts/AuthContext";
 import Certificado from "@/components/Certificado/Certificado";
@@ -48,7 +48,11 @@ export default function MdlCustomcert({ sequence, setbuttons }: Props) {
 
     const handleClose = () => setShow(false);
 
-    const buscarCertificado = async () => {
+    useEffect(() => {
+        buscarCertificado(true);
+    }, []);
+
+    const buscarCertificado = async (readyOnly?: boolean) => {
 
         if (!user?.token) return;
 
@@ -59,6 +63,7 @@ export default function MdlCustomcert({ sequence, setbuttons }: Props) {
                 template_id: sequence.data_module.templateid
             }
         });
+        if (readyOnly) return;
         setCertificado(res.data);
         setTriggerDownload([true]);
     };
@@ -93,7 +98,7 @@ export default function MdlCustomcert({ sequence, setbuttons }: Props) {
                                             <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="black"><path d="m560-240-56-58 142-142H160v-80h486L504-662l56-58 240 240-240 240Z" /></svg>
                                         </span> */}
                         </a>
-                        <Button variant="primary" onClick={buscarCertificado}>
+                        <Button variant="primary" onClick={() => buscarCertificado()}>
                             Baixe seu certificado
                             <span className=""><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="black"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z" /></svg></span>
                         </Button>
@@ -108,7 +113,7 @@ export default function MdlCustomcert({ sequence, setbuttons }: Props) {
             </Modal>
             <div className="w-100 my-3 mb-5 d-flex">
 
-                <Button className="px-3 w-100" onClick={buscarCertificado}>Baixar Certificado</Button>
+                <Button className="px-3 w-100" onClick={() => buscarCertificado()}>Baixar Certificado</Button>
                 <Certificado
                     certificado={certificado}
                     triggerDownload={triggerDownload}
