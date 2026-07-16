@@ -2,8 +2,8 @@ import Faq from "./login/components/Faq";
 import Footer from "./login/components/Footer";
 import Header from "./login/components/Header";
 import Image from "next/image";
-import patriocinadoresH from "/public/gael/patriocinadores_horizontal.png";
-import patriocinadoresV from "/public/gael/footer_mobile.png";
+import patriocinadoresH from "/public/gael/footer.svg";
+import patriocinadoresV from "/public/gael/footer_mobile.svg";
 
 export default function PublicLayout({ children }: Readonly<{ children: React.ReactNode; }>) {
     return (
@@ -30,7 +30,7 @@ export default function PublicLayout({ children }: Readonly<{ children: React.Re
                     height={0}
                     alt="Patrocinadores"
                     className="h-auto d-md-none"
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', maxWidth: 300 }}
                 />
             </div>
             <Footer />

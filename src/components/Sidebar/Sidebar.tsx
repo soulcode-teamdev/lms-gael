@@ -42,6 +42,11 @@ export default function Sidebar() {
                 {open && 'Certificados'}
             </a>
 
+            {/* <a href="/inscricao-fase2" className={`${open ? 'w-100 ps-2 icon-18-sidebar fs-12 fw-700 py-2' : ''} div-icon-sidebar text-white`}>
+                <MdOutlineAssignment color="#fff" size={20} />
+                {open && 'Inscrição Fase 2'}
+            </a> */}
+
             <a href="/perfil/editar" className={`${open ? 'w-100 ps-2 icon-18-sidebar fs-12 fw-700 py-2' : ''} div-icon-sidebar text-white`}>
                 <GoGear color="#fff" size={20} strokeWidth={0.5} />
                 {open && 'Configurações'}
