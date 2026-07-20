@@ -10,7 +10,7 @@ import { GoGear } from "react-icons/go";
 import { GoHome } from "react-icons/go";
 import Image from 'next/image';
 import { LiaCertificateSolid } from "react-icons/lia";
-import { MdLogout } from "react-icons/md";
+import { MdLogout, MdOutlineAssignment } from "react-icons/md";
 import { PiStudentBold } from "react-icons/pi";
 import aluno from "/public/aluno_2.png";
 import logo from "/public/gael/logo.png";
@@ -85,6 +85,11 @@ export default function Header() {
             <a href="/certificados" className="ps-2 icon-18-sidebar header-item fs-12 fw-700 py-2 div-icon-sidebar text-white">
               <LiaCertificateSolid color="#fff" size={18} className="me-2" strokeWidth={0.5} />
               Certificados
+            </a>
+
+            <a href="/inscricao-fase2" className="ps-2 icon-18-sidebar header-item fs-12 fw-700 py-2 div-icon-sidebar text-white">
+              <MdOutlineAssignment color="#fff" size={18} className="me-2" strokeWidth={0.5} />
+              Inscrição Fase 2
             </a>
 
             <a href="/perfil/editar" className="ps-2 icon-18-sidebar header-item fs-12 fw-700 py-2 div-icon-sidebar text-white mb-5">

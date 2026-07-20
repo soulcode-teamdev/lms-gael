@@ -8,7 +8,7 @@ import { GoGear } from "react-icons/go";
 import { GoHome } from "react-icons/go";
 import Image from "next/image";
 import { LiaCertificateSolid } from "react-icons/lia";
-import { MdLogout } from "react-icons/md";
+import { MdLogout, MdOutlineAssignment } from "react-icons/md";
 import { PiStudentBold } from "react-icons/pi";
 import logo1 from "/public/gael/logo_login.png";
 
@@ -42,10 +42,10 @@ export default function Sidebar() {
                 {open && 'Certificados'}
             </a>
 
-            {/* <a href="/inscricao-fase2" className={`${open ? 'w-100 ps-2 icon-18-sidebar fs-12 fw-700 py-2' : ''} div-icon-sidebar text-white`}>
+            <a href="/inscricao-fase2" className={`${open ? 'w-100 ps-2 icon-18-sidebar fs-12 fw-700 py-2' : ''} div-icon-sidebar text-white`}>
                 <MdOutlineAssignment color="#fff" size={20} />
                 {open && 'Inscrição Fase 2'}
-            </a> */}
+            </a>
 
             <a href="/perfil/editar" className={`${open ? 'w-100 ps-2 icon-18-sidebar fs-12 fw-700 py-2' : ''} div-icon-sidebar text-white`}>
                 <GoGear color="#fff" size={20} strokeWidth={0.5} />

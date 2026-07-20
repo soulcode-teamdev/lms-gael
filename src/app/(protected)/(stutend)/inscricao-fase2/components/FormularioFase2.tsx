@@ -242,31 +242,64 @@ function CardEstado({ children }: { children: React.ReactNode }) {
 }
 
 export default function FormularioFase2() {
-    const { signOut } = useContext(AuthContext);
+    const { signOut, user } = useContext(AuthContext);
     const router = useRouter();
 
     const [statusCheck, setStatusCheck] = useState<"loading" | "inscrito" | "livre">("loading");
     const [inscricaoExistente, setInscricaoExistente] = useState<string | null>(null);
+    const [programaConcluido, setProgramaConcluido] = useState<boolean>(false);
+    const [progressoGeral, setProgressoGeral] = useState<number>(0);
+    const hasChecked = useRef(false);
 
     useEffect(() => {
-        api.get<StatusResponse>("/gael/inscricoes/fase2/status")
-            .then((res) => {
-                if (res.data.ja_inscrito) {
-                    setInscricaoExistente(res.data.inscricao_id ?? null);
+        if (!user.id || hasChecked.current) return;
+        hasChecked.current = true;
+
+        const userId = user.id;
+
+        const checkStatus = api.get<StatusResponse>("/gael/inscricoes/fase2/status");
+
+        const checkProgresso = api.get("/progress/user-cohort", {
+            headers: {
+                userid: userId,
+                cohortid: 160,
+                subcourse_scope: "all",
+                scope: "cohort",
+                exclude_courses: "513,514",
+            },
+        });
+
+        Promise.allSettled([checkStatus, checkProgresso]).then(([statusRes, progressoRes]) => {
+            // status
+            if (statusRes.status === "fulfilled") {
+                const data = statusRes.value.data;
+                if (data.ja_inscrito) {
+                    setInscricaoExistente(data.inscricao_id ?? null);
                     setStatusCheck("inscrito");
                 } else {
                     setStatusCheck("livre");
                 }
-            })
-            .catch((err) => {
+            } else {
+                const err = statusRes.reason;
                 if (axios.isAxiosError(err) && err.response?.status === 401) {
                     signOut();
                     router.replace("/login");
                     return;
                 }
                 setStatusCheck("livre");
-            });
-    }, [signOut, router]);
+            }
+
+            // progresso
+            if (progressoRes.status === "fulfilled") {
+                const overall = progressoRes.value.data?.progress?.overall ?? 0;
+                setProgressoGeral(overall);
+                setProgramaConcluido(overall >= 100);
+            } else {
+                // em caso de erro na checagem de progresso, não bloqueia o usuário
+                setProgramaConcluido(true);
+            }
+        });
+    }, [user.id, signOut, router]);
 
     const [form, setForm] = useState<FormState>({
         nome_completo: "",
@@ -692,6 +725,33 @@ export default function FormularioFase2() {
                     />
                 </div>
 
+                {/* ── aviso de progresso insuficiente ── */}
+                {!programaConcluido && (
+                    <div
+                        style={{
+                            background: "rgba(249,176,64,.1)",
+                            border: "1px solid rgba(249,176,64,.4)",
+                            borderRadius: 10,
+                            padding: "14px 16px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                            marginBottom: 16,
+                        }}
+                    >
+                        <MdWarning size={22} color="#F9B040" style={{ flexShrink: 0 }} />
+                        <div>
+                            <p style={{ color: "#F9B040", fontSize: 14, fontWeight: 600, margin: 0 }}>
+                                Programa não concluído
+                            </p>
+                            <p style={{ color: "#c8a84a", fontSize: 13, margin: "2px 0 0" }}>
+                                Você precisa concluir 100% do programa para enviar sua inscrição.
+                                Seu progresso atual é de <strong>{Math.round(progressoGeral)}%</strong>.
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 {/* ── upload progress ── */}
                 {loading && (
                     <div style={{ marginBottom: 20 }}>
@@ -707,10 +767,10 @@ export default function FormularioFase2() {
 
                 <Button
                     type="submit"
-                    disabled={loading || !form.aceite_termo_lgpd}
+                    disabled={loading || !form.aceite_termo_lgpd || !programaConcluido}
                     style={{
                         width: "100%",
-                        background: form.aceite_termo_lgpd && !loading ? "linear-gradient(135deg,#EC6508,#d96215)" : "#444",
+                        background: form.aceite_termo_lgpd && !loading && programaConcluido ? "linear-gradient(135deg,#EC6508,#d96215)" : "#444",
                         border: "none",
                         borderRadius: 10,
                         padding: "14px 0",
@@ -722,7 +782,7 @@ export default function FormularioFase2() {
                         justifyContent: "center",
                         gap: 8,
                         transition: "opacity .2s",
-                        opacity: loading || !form.aceite_termo_lgpd ? 0.7 : 1,
+                        opacity: loading || !form.aceite_termo_lgpd || !programaConcluido ? 0.7 : 1,
                     }}
                 >
                     {loading

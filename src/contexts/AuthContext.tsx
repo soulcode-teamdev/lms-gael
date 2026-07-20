@@ -245,8 +245,8 @@ export function AuthContextProvider({ children }: Props) {
         const userObj = {} as User;
 
         try {
-            const isAllowed = await checkEmailInFirestore(email);
-            if (!isAllowed) return "not_enrolled";
+            // const isAllowed = await checkEmailInFirestore(email);
+            // if (!isAllowed) return "not_enrolled";
 
             const authResponse = await api.post("/auth", {
                 username: email,
