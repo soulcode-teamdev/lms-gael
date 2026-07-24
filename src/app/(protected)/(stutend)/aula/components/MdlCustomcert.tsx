@@ -4,6 +4,7 @@ import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "@/contexts/AuthContext";
 import Certificado from "@/components/Certificado/Certificado";
 import { api } from "@/shared/api/api";
+import axios from "axios";
 
 export interface Sequence {
     cmid: number,
@@ -42,6 +43,7 @@ export default function MdlCustomcert({ sequence, setbuttons }: Props) {
 
     const [certificado, setCertificado] = useState<CertificateData | null>(null);
     const [triggerDownload, setTriggerDownload] = useState<boolean[]>([false]);
+    const [erroEmissao, setErroEmissao] = useState<string | null>(null);
 
 
     const [show, setShow] = useState(true);
@@ -56,20 +58,45 @@ export default function MdlCustomcert({ sequence, setbuttons }: Props) {
 
         if (!user?.token) return;
 
-        const res = await api.get("/certificate", {
-            headers: {
+        try {
+            const res = await api.get("/certificate", {
+                headers: {
 
-                course: sequence.data_module.course,
-                template_id: sequence.data_module.templateid
+                    course: sequence.data_module.course,
+                    template_id: sequence.data_module.templateid
+                }
+            });
+            if (readyOnly) return;
+            setCertificado(res.data);
+            setTriggerDownload([true]);
+        } catch (err) {
+            if (readyOnly) return;
+
+            // 403: não elegível (não matriculado, curso não concluído, template inválido).
+            if (axios.isAxiosError(err) && err.response?.status === 403) {
+                const detalhe = (err.response?.data as { error?: string })?.error;
+                setErroEmissao(
+                    "Não foi possível emitir o certificado. Verifique se você concluiu todas as atividades obrigatórias do curso." +
+                    (detalhe ? `\n\nDetalhe: ${detalhe}` : "")
+                );
+                return;
             }
-        });
-        if (readyOnly) return;
-        setCertificado(res.data);
-        setTriggerDownload([true]);
+
+            setErroEmissao("Não foi possível emitir o certificado. Tente novamente mais tarde.");
+        }
     };
 
     return (
         <div className="w-100">
+            <Modal show={!!erroEmissao} centered onHide={() => setErroEmissao(null)}>
+                <Modal.Header closeButton>
+                    <Modal.Title className="fs-18">Certificado indisponível</Modal.Title>
+                </Modal.Header>
+                <Modal.Body style={{ whiteSpace: "pre-line" }}>{erroEmissao}</Modal.Body>
+                <Modal.Footer>
+                    <Button variant="primary" onClick={() => setErroEmissao(null)}>Entendi</Button>
+                </Modal.Footer>
+            </Modal>
             <Modal show={show} centered onHide={handleClose} className="position-relative" backdrop={true}>
                 <img
                     src="/gael/certificado_gael_grafismo_2.png"
