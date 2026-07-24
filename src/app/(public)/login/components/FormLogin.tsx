@@ -2,12 +2,20 @@
 
 import { Button, Col, Form, Row } from "react-bootstrap";
 import { FaRegEye, FaRegEyeSlash } from "react-icons/fa6";
-import { Suspense, useContext, useState } from "react";
+import { Suspense, useContext, useEffect, useState } from "react";
 
 import { AuthContext } from "@/contexts/AuthContext";
 import EsqueciSenha from "./EsqueciSenha";
 import Image from "next/image";
+import { SESSION_EXPIRED_KEY } from "@/shared/api/api";
 import logo1 from "/public/gael/logo.png";
+
+function formatRetry(seconds: number): string {
+    if (!seconds || seconds <= 0) return "alguns instantes";
+    if (seconds < 60) return `${seconds} segundo${seconds > 1 ? "s" : ""}`;
+    const min = Math.ceil(seconds / 60);
+    return `${min} minuto${min > 1 ? "s" : ""}`;
+}
 
 export default function FormLogin({ forgotPassword = false }: { forgotPassword?: boolean }) {
 
@@ -17,8 +25,32 @@ export default function FormLogin({ forgotPassword = false }: { forgotPassword?:
     const [rememberMe, setRememberMe] = useState<boolean>(false);
     const [esqueciSenha, setEsqueciSenha] = useState<boolean>(forgotPassword);
     const [error, setError] = useState<string>();
+    const [info, setInfo] = useState<string>();
+    const [blockedUntil, setBlockedUntil] = useState<number>(0);
+    const [now, setNow] = useState<number>(Date.now());
 
     const { signIn } = useContext(AuthContext);
+
+    const remainingSeconds = Math.max(0, Math.ceil((blockedUntil - now) / 1000));
+    const isBlocked = remainingSeconds > 0;
+
+    // Aviso curto quando redirecionado por sessão expirada.
+    useEffect(() => {
+        try {
+            const msg = sessionStorage.getItem(SESSION_EXPIRED_KEY);
+            if (msg) {
+                setInfo(msg);
+                sessionStorage.removeItem(SESSION_EXPIRED_KEY);
+            }
+        } catch { }
+    }, []);
+
+    // Contador regressivo enquanto durar o bloqueio (429/423).
+    useEffect(() => {
+        if (blockedUntil <= Date.now()) return;
+        const interval = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(interval);
+    }, [blockedUntil]);
 
     const togglePasswordVisible = () => {
         setPasswordVisible(!passwordVisible);
@@ -26,11 +58,27 @@ export default function FormLogin({ forgotPassword = false }: { forgotPassword?:
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isBlocked) return;
+        setInfo(undefined);
         const res = await signIn(email, password, rememberMe);
-        if (res === "not_enrolled") {
+
+        if (!res) {
+            setError(undefined);
+            return;
+        }
+
+        if (res.status === "not_enrolled") {
             setError("Você não está inscrito no programa");
-        } else if (res === "invalid_credentials") {
+        } else if (res.status === "invalid_credentials") {
             setError("Credenciais inválidas");
+        } else if (res.status === "rate_limited") {
+            setBlockedUntil(Date.now() + res.retryAfter * 1000);
+            setNow(Date.now());
+            setError(`Muitas tentativas de login. Tente novamente em ${formatRetry(res.retryAfter)}.`);
+        } else if (res.status === "account_locked") {
+            setBlockedUntil(Date.now() + res.retryAfter * 1000);
+            setNow(Date.now());
+            setError(`Conta temporariamente bloqueada por excesso de tentativas. Tente novamente em ${formatRetry(res.retryAfter)}.`);
         }
     }
 
@@ -41,6 +89,7 @@ export default function FormLogin({ forgotPassword = false }: { forgotPassword?:
     };
 
     function validate(): boolean {
+        if (isBlocked) return true;
         if (!email || !password) return true;
         return false;
     }
@@ -74,7 +123,9 @@ export default function FormLogin({ forgotPassword = false }: { forgotPassword?:
                                         <FaRegEye className="form-password-icon-login" onClick={togglePasswordVisible} />
                                 }
                             </div>
+                            {info && <div className="w-100 text-primary fs-12">{info}</div>}
                             <div className="text-end w-100 text-danger fs-12">{error}</div>
+                            {isBlocked && <div className="text-end w-100 text-danger fs-12">Aguarde {remainingSeconds}s para tentar novamente.</div>}
 
                             <div className="d-flex justify-content-between flex-wrap">
                                 <Form.Check
