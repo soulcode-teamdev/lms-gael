@@ -5,6 +5,7 @@ import { createContext, useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { StaticImageData } from "next/image";
+import axios from "axios";
 import { api } from "@/shared/api/api";
 import { db } from "@/lib/firebaseConfig";
 import { jwtDecode } from "jwt-decode";
@@ -51,12 +52,17 @@ interface ApiResponse {
     data: Profile;
 }
 
+export type SignInResult =
+    | null
+    | { status: "not_enrolled" | "invalid_credentials" }
+    | { status: "rate_limited" | "account_locked"; retryAfter: number };
+
 type AuthContextData = {
     user: User;
     userLevel: number | null;
     setUserLevel: (level: number) => void;
-    signIn: (email: string, password: string, rememberMe: boolean, origin?: string) => Promise<"not_enrolled" | "invalid_credentials" | null>;
-    signOut: () => void;
+    signIn: (email: string, password: string, rememberMe: boolean, origin?: string) => Promise<SignInResult>;
+    signOut: () => Promise<void>;
     signInByRecoveryPassword: (user: User) => void;
     perfil: Profile;
 };
@@ -114,6 +120,8 @@ export function AuthContextProvider({ children }: Props) {
     function clearStoredUser() {
         localStorage.removeItem("user");
         sessionStorage.removeItem("user");
+        localStorage.removeItem("profile");
+        sessionStorage.removeItem("profile");
     }
 
     function saveUser(userObj: User, rememberMe: boolean) {
@@ -241,12 +249,12 @@ export function AuthContextProvider({ children }: Props) {
         return false;
     }
 
-    async function signIn(email: string, password: string, rememberMe: boolean, origin?: string): Promise<"not_enrolled" | "invalid_credentials" | null> {
+    async function signIn(email: string, password: string, rememberMe: boolean, origin?: string): Promise<SignInResult> {
         const userObj = {} as User;
 
         try {
             // const isAllowed = await checkEmailInFirestore(email);
-            // if (!isAllowed) return "not_enrolled";
+            // if (!isAllowed) return { status: "not_enrolled" };
 
             const authResponse = await api.post("/auth", {
                 username: email,
@@ -256,7 +264,7 @@ export function AuthContextProvider({ children }: Props) {
             });
 
             if (authResponse.data.error) {
-                return "invalid_credentials";
+                return { status: "invalid_credentials" };
             }
 
             userObj.id = authResponse.data.data.userid;
@@ -281,12 +289,21 @@ export function AuthContextProvider({ children }: Props) {
 
             router.replace("/");
             return null;
-        } catch {
+        } catch (err) {
+            if (axios.isAxiosError(err)) {
+                const status = err.response?.status;
+                const data = err.response?.data as { retry_after?: number } | undefined;
+                const headerRetry = Number(err.response?.headers?.["retry-after"]);
+                const retryAfter = data?.retry_after ?? (Number.isFinite(headerRetry) ? headerRetry : 0);
+
+                if (status === 429) return { status: "rate_limited", retryAfter };
+                if (status === 423) return { status: "account_locked", retryAfter };
+            }
+
             if (origin === "autoLogin") {
                 router.replace("/login");
-                return "invalid_credentials";
             }
-            return "invalid_credentials";
+            return { status: "invalid_credentials" };
         }
     }
 
@@ -297,9 +314,18 @@ export function AuthContextProvider({ children }: Props) {
         router.replace("/");
     }
 
-    function signOut() {
+    async function signOut() {
+        // Tenta invalidar o token no servidor antes de limpar o storage local.
+        // O logout local deve ocorrer mesmo se a chamada falhar (rede/401).
+        try {
+            await api.post("/auth/logout");
+        } catch {
+            // 401 (token já inválido) ou erro de rede: seguimos com o logout local.
+        }
+
         clearStoredUser();
         setUserLevel(null);
+        setUser({} as User);
         router.replace("/login");
     }
 
