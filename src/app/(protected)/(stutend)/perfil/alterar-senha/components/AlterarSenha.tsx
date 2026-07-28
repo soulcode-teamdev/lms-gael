@@ -4,6 +4,7 @@ import { FaRegCheckCircle, FaRegEye, FaRegEyeSlash } from "react-icons/fa";
 import { FormEvent, useContext, useEffect, useState } from "react";
 
 import { AuthContext } from "@/contexts/AuthContext";
+import axios from "axios";
 import { useRouter } from "next/navigation";
 
 interface PasswordValidationResult {
@@ -108,8 +109,14 @@ export default function AlterarSenha() {
                 router.push("/carreiras");
             })
             .catch((err) => {
-                router.push("/login");
-                setError(err.response.data.error);
+                // 401: sessao expirada -> redireciona ao login (tambem tratado globalmente).
+                if (axios.isAxiosError(err) && err.response?.status === 401) {
+                    router.push("/login");
+                    return;
+                }
+
+                // 400: senha rejeitada pelo backend (fraca/comum/sem numero) -> exibir mensagem.
+                setError(err?.response?.data?.error ?? "Não foi possível alterar a senha. Tente novamente.");
             });
     }
 
@@ -194,6 +201,9 @@ export default function AlterarSenha() {
                         <div className="d-flex gap-2 align-items-center">
                             <FaRegCheckCircle size={20} className={validationResult?.hasSpecialChar ? "text-auxiliary9-project" : "text-auxiliary1-project"} />
                             No mínimo ter 1 caractere especial
+                        </div>
+                        <div className="fs-13 text-auxiliary1-project">
+                            Evite senhas comuns ou previsíveis (ex.: <b>Password!</b>, <b>Senha@123</b>) — elas são rejeitadas.
                         </div>
                         <div className="d-flex gap-2 align-items-center fw-700">
                             Nível de segurança:
