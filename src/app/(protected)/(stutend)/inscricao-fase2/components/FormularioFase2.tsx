@@ -12,7 +12,6 @@ import {
     MdWarning,
     MdCloudUpload,
     MdSend,
-    MdPerson,
     MdBusiness,
     MdVideoFile,
     MdShield,
@@ -44,10 +43,6 @@ type Setor = (typeof SETORES)[number];
 const VIDEO_MAX_BYTES = 500 * 1024 * 1024;
 
 interface FormState {
-    nome_completo: string;
-    email: string;
-    telefone: string;
-    cpf: string;
     is_empreendedor_criativo: boolean;
     mora_no_brasil: boolean;
     idade_maior_18: boolean;
@@ -302,10 +297,6 @@ export default function FormularioFase2() {
     }, [user.id, signOut, router]);
 
     const [form, setForm] = useState<FormState>({
-        nome_completo: "",
-        email: "",
-        telefone: "",
-        cpf: "",
         is_empreendedor_criativo: false,
         mora_no_brasil: false,
         idade_maior_18: false,
@@ -318,7 +309,6 @@ export default function FormularioFase2() {
         aceite_termo_lgpd: false,
     });
 
-    const [certificado, setCertificado] = useState<File | null>(null);
     const [video, setVideo] = useState<File | null>(null);
     const [docComplementar, setDocComplementar] = useState<File | null>(null);
     const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -326,7 +316,6 @@ export default function FormularioFase2() {
     const [result, setResult] = useState<SubmitResult | null>(null);
     const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
 
-    const certRef = useRef<HTMLInputElement>(null);
     const videoRef = useRef<HTMLInputElement>(null);
     const docRef = useRef<HTMLInputElement>(null);
 
@@ -342,7 +331,6 @@ export default function FormularioFase2() {
 
     const validate = (): boolean => {
         const erros: Record<string, string> = {};
-        if (!certificado) erros.certificado_fase1 = "Certificado da Fase 1 é obrigatório.";
         if (!video) {
             erros.video_pitch = "Vídeo de pitch é obrigatório.";
         } else if (video.size > VIDEO_MAX_BYTES) {
@@ -361,10 +349,6 @@ export default function FormularioFase2() {
         if (!validate()) return;
 
         const fd = new FormData();
-        fd.append("nome_completo", form.nome_completo);
-        fd.append("email", form.email);
-        fd.append("telefone", form.telefone);
-        fd.append("cpf", form.cpf);
         fd.append("is_empreendedor_criativo", String(form.is_empreendedor_criativo));
         fd.append("mora_no_brasil", String(form.mora_no_brasil));
         fd.append("idade_maior_18", String(form.idade_maior_18));
@@ -375,7 +359,6 @@ export default function FormularioFase2() {
         fd.append("num_pessoas_envolvidas", form.num_pessoas_envolvidas);
         fd.append("renda_responsavel", form.renda_responsavel);
         fd.append("aceite_termo_lgpd", String(form.aceite_termo_lgpd));
-        fd.append("certificado_fase1", certificado!);
         fd.append("video_pitch", video!);
         if (docComplementar) fd.append("documentacao_complementar", docComplementar);
 
@@ -547,43 +530,6 @@ export default function FormularioFase2() {
                     </div>
                 )}
 
-                {/* ── 1. Dados pessoais ── */}
-                <div style={sectionCard}>
-                    <p style={sectionTitle}>
-                        <MdPerson size={18} color="#EC6508" />
-                        Dados pessoais
-                    </p>
-                    <div className="row">
-                        <Form.Group className="mb-3 col-lg-6" controlId="nome_completo">
-                            <Form.Label style={labelStyle}>Nome completo <span style={{ color: "#EC6508" }}>*</span></Form.Label>
-                            <Form.Control type="text" name="nome_completo" className={inputCls("nome_completo")}
-                                value={form.nome_completo} onChange={handleText} placeholder="Nome completo" required />
-                            {fe("nome_completo") && <div className="invalid-feedback">{fe("nome_completo")}</div>}
-                        </Form.Group>
-
-                        <Form.Group className="mb-3 col-lg-6" controlId="email">
-                            <Form.Label style={labelStyle}>E-mail <span style={{ color: "#EC6508" }}>*</span></Form.Label>
-                            <Form.Control type="email" name="email" className={inputCls("email")}
-                                value={form.email} onChange={handleText} placeholder="seuemail@exemplo.com" required />
-                            {fe("email") && <div className="invalid-feedback">{fe("email")}</div>}
-                        </Form.Group>
-
-                        <Form.Group className="mb-3 col-lg-6" controlId="telefone">
-                            <Form.Label style={labelStyle}>Telefone <span style={{ color: "#EC6508" }}>*</span></Form.Label>
-                            <Form.Control type="tel" name="telefone" className={inputCls("telefone")}
-                                value={form.telefone} onChange={handleText} placeholder="(11) 99999-9999" required />
-                            {fe("telefone") && <div className="invalid-feedback">{fe("telefone")}</div>}
-                        </Form.Group>
-
-                        <Form.Group className="mb-0 col-lg-6" controlId="cpf">
-                            <Form.Label style={labelStyle}>CPF <span style={{ color: "#EC6508" }}>*</span></Form.Label>
-                            <Form.Control type="text" name="cpf" className={inputCls("cpf")}
-                                value={form.cpf} onChange={handleText} placeholder="000.000.000-00" required />
-                            {fe("cpf") && <div className="invalid-feedback">{fe("cpf")}</div>}
-                        </Form.Group>
-                    </div>
-                </div>
-
                 {/* ── 2. Elegibilidade ── */}
                 <div style={sectionCard}>
                     <p style={sectionTitle}>
@@ -680,18 +626,6 @@ export default function FormularioFase2() {
                     <div className="row">
                         <div className="col-lg-6">
                             <FileZone
-                                label="Certificado da Fase 1"
-                                accept="image/*,.pdf"
-                                file={certificado}
-                                onChange={setCertificado}
-                                error={fe("certificado_fase1")}
-                                required
-                                hint="Imagem ou PDF"
-                                inputRef={certRef as React.RefObject<HTMLInputElement>}
-                            />
-                        </div>
-                        <div className="col-lg-6">
-                            <FileZone
                                 label="Vídeo de pitch (3–5 min, máx. 500 MB)"
                                 accept="video/*"
                                 file={video}
@@ -745,7 +679,7 @@ export default function FormularioFase2() {
                                 Programa não concluído
                             </p>
                             <p style={{ color: "#c8a84a", fontSize: 13, margin: "2px 0 0" }}>
-                                Você precisa concluir 100% do programa para enviar sua inscrição.
+                                Você precisa concluir 100% das 4 primeiras trilhas do programa para enviar sua inscrição.
                                 Seu progresso atual é de <strong>{Math.round(progressoGeral)}%</strong>.
                             </p>
                         </div>
