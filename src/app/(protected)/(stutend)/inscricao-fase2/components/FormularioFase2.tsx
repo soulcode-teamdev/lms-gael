@@ -49,6 +49,8 @@ interface FormState {
     is_empreendedor_criativo: boolean;
     mora_no_brasil: boolean;
     idade_maior_18: boolean;
+    responsavel_legal: boolean;
+    nome_empreendimento: string;
     setor_empreendimento: Setor | "";
     setor_outros: string;
     tempo_existencia: string;
@@ -67,6 +69,7 @@ const CRITERIO_LABEL: Record<string, string> = {
     is_empreendedor_criativo: "Ser empreendedor criativo",
     mora_no_brasil: "Residir no Brasil",
     idade_maior_18: "Ter 18 anos ou mais",
+    responsavel_legal: "Ser o(a) responsável legal pelo empreendimento",
     aceite_termo_lgpd: "Aceite dos termos LGPD",
 };
 
@@ -375,6 +378,8 @@ export default function FormularioFase2() {
         is_empreendedor_criativo: false,
         mora_no_brasil: false,
         idade_maior_18: false,
+        responsavel_legal: false,
+        nome_empreendimento: "",
         setor_empreendimento: "",
         setor_outros: "",
         tempo_existencia: "",
@@ -413,6 +418,9 @@ export default function FormularioFase2() {
         }
         if (docComplementar && docComplementar.size > DOC_MAX_BYTES) {
             erros.documentacao_complementar = "A documentação complementar não pode exceder 50MB.";
+        }
+        if (!form.nome_empreendimento.trim()) {
+            erros.nome_empreendimento = "Informe o nome do empreendimento.";
         }
         if (form.setor_empreendimento === "Outro" && !form.setor_outros.trim()) {
             erros.setor_outros = "Informe o setor quando selecionar 'Outro'.";
@@ -466,6 +474,7 @@ export default function FormularioFase2() {
             is_empreendedor_criativo: form.is_empreendedor_criativo,
             mora_no_brasil: form.mora_no_brasil,
             idade_maior_18: form.idade_maior_18,
+            responsavel_legal: form.responsavel_legal,
         });
         return data.sessionUri as string;
     };
@@ -508,6 +517,8 @@ export default function FormularioFase2() {
                 is_empreendedor_criativo: form.is_empreendedor_criativo,
                 mora_no_brasil: form.mora_no_brasil,
                 idade_maior_18: form.idade_maior_18,
+                responsavel_legal: form.responsavel_legal,
+                nome_empreendimento: form.nome_empreendimento,
                 setor_empreendimento: form.setor_empreendimento,
                 tempo_existencia: form.tempo_existencia,
                 formalizacao: form.formalizacao,
@@ -672,6 +683,8 @@ export default function FormularioFase2() {
                         label="Resido no Brasil" checked={form.mora_no_brasil} onChange={handleCheck} />
                     <EligCheck id="idade_maior_18" name="idade_maior_18"
                         label="Tenho 18 anos ou mais" checked={form.idade_maior_18} onChange={handleCheck} />
+                    <EligCheck id="responsavel_legal" name="responsavel_legal"
+                        label="Sou o(a) responsável legal pelo empreendimento" checked={form.responsavel_legal} onChange={handleCheck} />
                 </div>
 
                 {/* ── 3. Empreendimento ── */}
@@ -681,6 +694,13 @@ export default function FormularioFase2() {
                         Sobre o EMPREENDIMENTO
                     </p>
                     <div className="row">
+                        <Form.Group className="mb-3 col-lg-6" controlId="nome_empreendimento">
+                            <Form.Label style={labelStyle}>Nome do empreendimento <span style={{ color: "#EC6508" }}>*</span></Form.Label>
+                            <Form.Control type="text" name="nome_empreendimento" className={inputCls("nome_empreendimento")}
+                                value={form.nome_empreendimento} onChange={handleText} placeholder="Ex: Padaria da Ana" required />
+                            {fe("nome_empreendimento") && <div className="invalid-feedback">{fe("nome_empreendimento")}</div>}
+                        </Form.Group>
+
                         <Form.Group className="mb-3 col-lg-6" controlId="setor_empreendimento">
                             <Form.Label style={labelStyle}>Setor <span style={{ color: "#EC6508" }}>*</span></Form.Label>
                             <Form.Select name="setor_empreendimento" className={inputCls("setor_empreendimento")}
@@ -773,11 +793,11 @@ export default function FormularioFase2() {
                         </div>
                         <div className="col-lg-6">
                             <FileZone
-                                label="Documentação complementar"
+                                label="Material Complementar: O que mais precisamos saber sobre seu empreendimento? (opcional)"
                                 file={docComplementar}
                                 onChange={setDocComplementar}
                                 error={fe("documentacao_complementar")}
-                                hint="Opcional — máx. 50 MB"
+                                hint="Você pode inserir: portfólios, vídeos, link de acesso a site ou perfil em redes sociais do empreendimento — máx. 50 MB"
                                 inputRef={docRef as React.RefObject<HTMLInputElement>}
                             />
                         </div>
@@ -837,10 +857,10 @@ export default function FormularioFase2() {
 
                 <Button
                     type="submit"
-                    disabled={loading || !form.aceite_termo_lgpd || !programaConcluido}
+                    disabled={loading || !form.aceite_termo_lgpd || !form.responsavel_legal || !programaConcluido}
                     style={{
                         width: "100%",
-                        background: form.aceite_termo_lgpd && !loading && programaConcluido ? "linear-gradient(135deg,#EC6508,#d96215)" : "#444",
+                        background: form.aceite_termo_lgpd && form.responsavel_legal && !loading && programaConcluido ? "linear-gradient(135deg,#EC6508,#d96215)" : "#444",
                         border: "none",
                         borderRadius: 10,
                         padding: "14px 0",
@@ -852,7 +872,7 @@ export default function FormularioFase2() {
                         justifyContent: "center",
                         gap: 8,
                         transition: "opacity .2s",
-                        opacity: loading || !form.aceite_termo_lgpd || !programaConcluido ? 0.7 : 1,
+                        opacity: loading || !form.aceite_termo_lgpd || !form.responsavel_legal || !programaConcluido ? 0.7 : 1,
                     }}
                 >
                     {loading
