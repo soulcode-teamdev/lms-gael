@@ -16,6 +16,7 @@ import {
     MdBusiness,
     MdVideoFile,
     MdShield,
+    MdDownload,
 } from "react-icons/md";
 
 const SETORES = [
@@ -642,7 +643,7 @@ export default function FormularioFase2() {
                 <p style={{ color: "rgba(255,255,255,.7)", fontSize: 12, margin: "0 0 4px", letterSpacing: 1, textTransform: "uppercase" }}>
                     Cria Mais
                 </p>
-                <h2 style={{ color: "#fff", fontWeight: 700, fontSize: 24, margin: 0 }}>Inscrição — Fase 2</h2>
+                <h2 style={{ color: "#fff", fontWeight: 700, fontSize: 24, margin: 0 }}>A fase II começa agora!</h2>
                 <p style={{ color: "rgba(255,255,255,.8)", fontSize: 13, marginTop: 6, marginBottom: 0 }}>
                     Preencha todos os campos obrigatórios (<span style={{ color: "#fff" }}>*</span>) e envie sua inscrição.
                 </p>
@@ -670,6 +671,30 @@ export default function FormularioFase2() {
                         <span style={{ color: "#ff6b6b", fontSize: 14 }}>{result.motivo}</span>
                     </div>
                 )}
+
+                {/* ── Regras da Fase II ── */}
+                <a
+                    href="/gael/regras_participacao_faseII.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        background: "rgba(236,101,8,.1)",
+                        border: "1px solid rgba(236,101,8,.4)",
+                        borderRadius: 10,
+                        padding: "14px 16px",
+                        marginBottom: 20,
+                        color: "#EC6508",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        textDecoration: "none",
+                    }}
+                >
+                    <MdDownload size={20} color="#EC6508" style={{ flexShrink: 0 }} />
+                    Baixe todas as regras da fase II clicando aqui
+                </a>
 
                 {/* ── 2. Elegibilidade ── */}
                 <div style={sectionCard}>
