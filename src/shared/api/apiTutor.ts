@@ -1,6 +1,7 @@
 import { trackEvent, truncate } from "@/lib/trackingService";
 
 import axios from "axios";
+import { handleSessionExpired, isSessionExpiredError } from "./sessionExpired";
 
 const baseURL = process.env.NEXT_PUBLIC_TUTOR1_API_URL;
 
@@ -44,5 +45,11 @@ apiTutor.interceptors.response.use(
     });
     return response;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    // Tratamento global de sessão expirada: HTTP 401 + { relogar: true }.
+    if (isSessionExpiredError(error)) {
+      handleSessionExpired(error?.response?.data?.message);
+    }
+    return Promise.reject(error);
+  }
 );
