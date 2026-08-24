@@ -558,31 +558,53 @@ export default function FormularioFase2() {
         );
     }
 
-    // if (statusCheck === "inscrito") {
-    //     return (
-    //         <CardEstado>
-    //             <MdCheckCircle size={64} color="#93C01F" />
-    //             <h2 style={{ color: "#F9F8F1", fontWeight: 700, marginTop: 16 }}>Você já se inscreveu!</h2>
-    //             <p style={{ color: "#aaa", fontSize: 14, marginTop: 8 }}>Sua inscrição foi registrada com o número:</p>
-    //             {inscricaoExistente && (
-    //                 <div
-    //                     style={{
-    //                         background: "#1D1D1B",
-    //                         borderRadius: 8,
-    //                         padding: "12px 24px",
-    //                         display: "inline-block",
-    //                         marginTop: 12,
-    //                     }}
-    //                 >
-    //                     <span style={{ color: "#EC6508", fontWeight: 700, fontSize: 18, letterSpacing: 1 }}>
-    //                         {inscricaoExistente}
-    //                     </span>
-    //                 </div>
-    //             )}
-    //             <p style={{ color: "#666", fontSize: 12, marginTop: 16 }}>Guarde este código para acompanhamento.</p>
-    //         </CardEstado>
-    //     );
-    // }
+    if (statusCheck === "inscrito") {
+        return (
+            <CardEstado>
+                <MdCheckCircle size={64} color="#93C01F" />
+                <h2 style={{ color: "#F9F8F1", fontWeight: 700, marginTop: 16 }}>Você já se inscreveu!</h2>
+                <p style={{ color: "#aaa", fontSize: 14, marginTop: 8 }}>Sua inscrição foi registrada com o número:</p>
+                {inscricaoExistente && (
+                    <div
+                        style={{
+                            background: "#1D1D1B",
+                            borderRadius: 8,
+                            padding: "12px 24px",
+                            display: "inline-block",
+                            marginTop: 12,
+                        }}
+                    >
+                        <span style={{ color: "#EC6508", fontWeight: 700, fontSize: 18, letterSpacing: 1 }}>
+                            {inscricaoExistente}
+                        </span>
+                    </div>
+                )}
+                <p style={{ color: "#666", fontSize: 12, marginTop: 16 }}>Guarde este código para acompanhamento.</p>
+                <a
+                    href="/gael/regras_participacao_faseII.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 10,
+                        background: "rgba(236,101,8,.1)",
+                        border: "1px solid rgba(236,101,8,.4)",
+                        borderRadius: 10,
+                        padding: "12px 20px",
+                        marginTop: 20,
+                        color: "#EC6508",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        textDecoration: "none",
+                    }}
+                >
+                    <MdDownload size={20} color="#EC6508" style={{ flexShrink: 0 }} />
+                    Baixe todas as regras da fase II clicando aqui
+                </a>
+            </CardEstado>
+        );
+    }
 
     if (result?.type === "ok") {
         return (
@@ -594,6 +616,28 @@ export default function FormularioFase2() {
                     <span style={{ color: "#EC6508", fontWeight: 700, fontSize: 18, letterSpacing: 1 }}>{result.inscricao_id}</span>
                 </div>
                 <p style={{ color: "#666", fontSize: 12, marginTop: 16 }}>Guarde este código para acompanhamento.</p>
+                <a
+                    href="/gael/regras_participacao_faseII.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 10,
+                        background: "rgba(236,101,8,.1)",
+                        border: "1px solid rgba(236,101,8,.4)",
+                        borderRadius: 10,
+                        padding: "12px 20px",
+                        marginTop: 20,
+                        color: "#EC6508",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        textDecoration: "none",
+                    }}
+                >
+                    <MdDownload size={20} color="#EC6508" style={{ flexShrink: 0 }} />
+                    Baixe todas as regras da fase II clicando aqui
+                </a>
             </CardEstado>
         );
     }
