@@ -6,42 +6,17 @@ import { trackEvent, truncate } from "@/lib/trackingService";
 import { StoredUser } from "@/contexts/AuthContext";
 import axios from "axios";
 import { db } from "@/lib/firebaseConfig";
+import {
+  SESSION_EXPIRED_KEY,
+  handleSessionExpired,
+  isSessionExpiredError,
+} from "./sessionExpired";
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL;
 const BLOCKED_URLS = ["/auth"];
 
-// Chave usada para a tela de login exibir um aviso curto após sessão expirada.
-export const SESSION_EXPIRED_KEY = "session_expired_message";
-
-const clearStoredSession = () => {
-  localStorage.removeItem("user");
-  sessionStorage.removeItem("user");
-  localStorage.removeItem("profile");
-  sessionStorage.removeItem("profile");
-};
-
-// Evita múltiplos redirecionamentos simultâneos ao receber vários 401.
-let handlingSessionExpired = false;
-
-const handleSessionExpired = (message?: string) => {
-  if (typeof window === "undefined") return;
-  if (handlingSessionExpired) return;
-  handlingSessionExpired = true;
-
-  clearStoredSession();
-  try {
-    sessionStorage.setItem(
-      SESSION_EXPIRED_KEY,
-      message || "Sessão expirada. Faça login novamente."
-    );
-  } catch {
-    // ignora falhas de storage
-  }
-
-  if (!window.location.pathname.includes("/login")) {
-    window.location.href = "/login";
-  }
-};
+// Reexportado para consumidores existentes (ex.: tela de login).
+export { SESSION_EXPIRED_KEY };
 
 let updateResponsesFn: (() => void) | null = null;
 
@@ -146,13 +121,9 @@ api.interceptors.response.use(
   async (error) => {
     await logErrorToFirebase(error, "response");
 
-    // Tratamento global de 401 "Sessão expirada" (após logout ou troca de senha).
-    // Não intercepta o próprio fluxo de autenticação/logout.
-    const response = error?.response as { status?: number; data?: { message?: string } } | undefined;
-    const url: string = error?.config?.url ?? "";
-    const isAuthFlow = url.includes("/auth");
-
-    if (response?.status === 401 && !isAuthFlow) {
+    // Tratamento global de sessão expirada: HTTP 401 + { relogar: true }.
+    if (isSessionExpiredError(error)) {
+      const response = error?.response as { data?: { message?: string } } | undefined;
       handleSessionExpired(response?.data?.message);
     }
 

@@ -16,52 +16,105 @@ export default function Faq() {
                     </AccordionItem>
 
                     <AccordionItem eventKey="1" className="mb-2">
-                        <AccordionHeader>O curso é gratuito e com certificado?</AccordionHeader>
+                        <AccordionHeader>Como funciona o Capital Semente de R$ 8 mil?</AccordionHeader>
                         <AccordionBody>
-                            Sim! O programa é 100% gratuito do início ao fim. Ao final de cada trilha, você recebe um certificado referente e ao completar toda a jornada, você emite o certificado oficial consolidado do Cria Mais.
+                            <p>
+                                O Capital Semente é um incentivo a fundo (não é empréstimo) de R$ 8.000,00 para compra de equipamentos, insumos ou divulgação do seu negócio criativo.
+                            </p>
+                            <p className="mb-1">Como concorrer a uma das 60 vagas (com mentorias exclusivas):</p>
+                            <ul className="mb-0">
+                                <li>Conclua as 4 trilhas obrigatórias da Fase I na plataforma.</li>
+                                <li>A partir de 20/08, preencha o formulário de seleção na sua área logada.</li>
+                                <li>Envie um vídeo-pitch simples de 3 a 5 minutos apresentando seu projeto e onde sugere investir o recurso.</li>
+                            </ul>
                         </AccordionBody>
                     </AccordionItem>
 
                     <AccordionItem eventKey="2" className="mb-2">
-                        <AccordionHeader>Posso me inscrever a qualquer momento?</AccordionHeader>
+                        <AccordionHeader>Já terminei as 4 trilhas. Qual é o passo a passo para me inscrever na Fase II?</AccordionHeader>
                         <AccordionBody>
-                            Sim! As aulas começam oficialmente no dia 22/06, mas as vagas são limitadas! Garanta o seu cadastro o quanto antes no formulário acima.
+                            <p>
+                                Parabéns pela conclusão! Com as trilhas finalizadas, seu botão de inscrição para a Fase II estará automaticamente liberado no painel. Clicando nele, você vai:
+                            </p>
+                            <ul>
+                                <li>Preencher um formulário simplificado com os dados do seu empreendimento.</li>
+                                <li>Anexar o link ou arquivo do seu vídeo-pitch de 3 a 5 minutos.</li>
+                                <li>Dar o aceite nos termos do programa e enviar.</li>
+                            </ul>
+                            <p className="mb-0">Dica: Fique de olho no prazo final das inscrições: dia 20 de setembro!</p>
                         </AccordionBody>
                     </AccordionItem>
 
                     <AccordionItem eventKey="3" className="mb-2">
-                        <AccordionHeader>Como funciona a seleção para ganhar as mentorias e o dinheiro (Capital Semente)?</AccordionHeader>
+                        <AccordionHeader>Como devo gravar e o que preciso falar no meu vídeo-pitch?</AccordionHeader>
                         <AccordionBody>
-                            O prazo para as inscrições na pré-seleção acontecerão do dia 20 de Agosto ao dia 20 de setembro, após a conclusão das aulas e emissão do seu certificado da Fase I. Você poderá se inscrever para a pré-seleção, enviando o material solicitado (vídeo-pitch e uma apresentação do empreendimento). Uma banca avaliadora apresentará os 60 projetos que mais se destacaram, eles receberão 3 meses de mentoria e um capital semente no valor de R$ 8.000,00 para investir no negócio.
+                            <p>
+                                Relaxa, não é preciso edição profissional! Grave pelo celular mesmo, num local claro e silencioso. Em 3 a 5 minutos, mande o papo reto respondendo:
+                            </p>
+                            <ul className="mb-0">
+                                <li>Quem é você e o seu negócio (O que você faz)?</li>
+                                <li>Qual é o maior desafio da sua empresa hoje?</li>
+                                <li>Como os R$ 8 mil do Capital Semente podem ajudar no desenvolvimento do seu negócio?</li>
+                            </ul>
                         </AccordionBody>
                     </AccordionItem>
 
                     <AccordionItem eventKey="4" className="mb-2">
-                        <AccordionHeader>Qual é a duração do Programa?</AccordionHeader>
+                        <AccordionHeader>Como meu projeto será avaliado e quando sairá o resultado?</AccordionHeader>
                         <AccordionBody>
-                            A plataforma online oferece 20 horas de conteúdo dinâmico focado na prática. O programa tem duração até dezembro, mas as vagas são limitadas!                        </AccordionBody>
+                            Nossa banca de especialistas vai analisar seu empreendimento olhando para a inovação, o impacto na comunidade, a clareza da sua história e a viabilidade dos R$ 8 mil realmente impactarem seu corre. A lista dos 60 selecionados sai dia 28 de setembro na plataforma e nas nossas redes!
+                        </AccordionBody>
                     </AccordionItem>
 
                     <AccordionItem eventKey="5" className="mb-2">
-                        <AccordionHeader>Preciso ter MEI ou empresa (CNPJ) para participar?</AccordionHeader>
+                        <AccordionHeader>Poderei usar o capital semente como eu quiser?</AccordionHeader>
                         <AccordionBody>
-                            Não. Qualquer pessoa pode participar. Caso você queira disputar as vagas de mentoria e capital semente na Fase 2, basta enviar o material solicitado.
+                            Não. O Capital Semente de R$ 8 mil é pra fazer seu corre crescer! Junto com seu mentor, você vai definir o investimento focado nas prioridades reais do negócio, seja equipamento, produção ou marketing, pra virar a chave e gerar mais renda.
                         </AccordionBody>
                     </AccordionItem>
 
                     <AccordionItem eventKey="6" className="mb-2">
-                        <AccordionHeader>Como posso me inscrever?</AccordionHeader>
+                        <AccordionHeader>Quanto tempo duram as mentorias?</AccordionHeader>
                         <AccordionBody>
-                            É super rápido! Vá até o nosso formulário de cadastro, preencha seus dados básicos e clique em avançar. Você receberá o acesso para entrar na plataforma e garantir sua vaga.
+                            Serão 3 meses de acompanhamento colado no seu negócio! Durante esse tempo, você vai ter encontros com o seu mentor ou mentora pra olhar a realidade da sua empresa de perto. O foco é entender a sua rotina e colocar a mão na massa com atividades práticas pra organizar a gestão e ajustar o que for preciso.
                         </AccordionBody>
                     </AccordionItem>
 
                     <AccordionItem eventKey="7" className="mb-2">
-                        <AccordionHeader>Fiquei com dúvidas sobre o conteúdo das aulas. O que eu faço?</AccordionHeader>
+                        <AccordionHeader>Por quanto tempo terei mentoria e poderei usar o capital semente?</AccordionHeader>
                         <AccordionBody>
-                            Não se preocupe! Se você tiver qualquer dúvida relacionada aos assuntos ou materiais das nossas trilhas, pode enviar um e-mail direto para o duvidas.conteudo@criamaisfinancas.com.br. Nossa equipe está pronta para te ajudar!
+                            As mentorias e o uso do recurso duram 3 meses! Nesse período, você e seu mentor vão se encontrar pra organizar a gestão do seu microempreendimento, colocar tarefas práticas em dia e aplicar o Capital Semente no ritmo certo pra sua empresa crescer.
                         </AccordionBody>
                     </AccordionItem>
+
+                    <AccordionItem eventKey="8" className="mb-2">
+                        <AccordionHeader>As mentorias serão on-line ou presenciais?</AccordionHeader>
+                        <AccordionBody>
+                            As mentorias são 100% online pelo Google Meet. Todos os encontros vão seguir um cronograma definido e avisado com antecedência pra você conseguir se organizar direitinho sem atrapalhar sua rotina.
+                        </AccordionBody>
+                    </AccordionItem>
+
+                    <AccordionItem eventKey="9" className="mb-2">
+                        <AccordionHeader>Preciso enviar algum documento pra participar da FASE II?</AccordionHeader>
+                        <AccordionBody>
+                            Não! Pra participar da seleção e receber R$ 8 mil + mentorias na Fase II, é só preencher um formulário simples na própria plataforma do Cria Mais e enviar o vídeo-pitch do seu negócio.
+                        </AccordionBody>
+                    </AccordionItem>
+
+                    <AccordionItem eventKey="10" className="mb-2">
+                        <AccordionHeader>Se eu for selecionado(a), o capital semente cai direto na minha conta?</AccordionHeader>
+                        <AccordionBody>
+                            Não. O repasse dos R$ 8 mil é feito conforme a aprovação do Plano de Aplicação, que você e seu mentor vão montar juntos para garantir que o dinheiro vá direto pras prioridades reais do seu negócio.
+                        </AccordionBody>
+                    </AccordionItem>
+
+                    <AccordionItem eventKey="11" className="mb-2">
+                        <AccordionHeader>Posso receber o capital semente em uma conta comum?</AccordionHeader>
+                        <AccordionBody>
+                            Sim! Você pode usar a sua conta de sempre, desde que ela esteja no mesmo nome e CPF/CNPJ de quem fez a inscrição do empreendimento na Fase II.
+                        </AccordionBody>
+                    </AccordionItem>
+
                 </Accordion>
             </Col>
         </Row>

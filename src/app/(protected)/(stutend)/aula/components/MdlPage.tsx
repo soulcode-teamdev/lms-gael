@@ -33,6 +33,8 @@ export default function MdlPage({ sequence, paused, setPaused, setbuttons }: Pro
     const [progress, setProgress] = useState<number>(0);
     const [completed, setCompleted] = useState<boolean>(false);
     const [isSeeking, setIsSeeking] = useState<boolean>(false);
+    const [videoError, setVideoError] = useState<boolean>(false);
+    const [videoErrorMsg, setVideoErrorMsg] = useState<string>("");
 
     const watchedSeconds = useRef<number>(0);
     const lastTime = useRef<number>(0);
@@ -40,9 +42,32 @@ export default function MdlPage({ sequence, paused, setPaused, setbuttons }: Pro
     const { user } = useContext(AuthContext);
 
     function getVideoLink(): string {
-        const regex = /<source\s+src="([^"]+)"/;
-        const match = regex.exec(sequence.data_module.content);
-        return match ? match[1] : "";
+        const content = sequence.data_module.content;
+
+        // Primeiro tenta <source src="...">; se não houver, aceita <video src="...">.
+        const sourceMatch = /<source\s+[^>]*src="([^"]+)"/i.exec(content);
+        if (sourceMatch) return sourceMatch[1];
+
+        const videoMatch = /<video\s+[^>]*src="([^"]+)"/i.exec(content);
+        return videoMatch ? videoMatch[1] : "";
+    }
+
+    function getDownloadLink(): string {
+        const url = getVideoLink();
+        if (!url) return url;
+
+        // URLs de arquivo do Moodle (pluginfile.php) aceitam forcedownload=1,
+        // que força o download em vez de tentar reproduzir inline no navegador.
+        try {
+            const parsed = new URL(url);
+            if (parsed.pathname.includes("pluginfile.php")) {
+                parsed.searchParams.set("forcedownload", "1");
+                return parsed.toString();
+            }
+        } catch {
+            // URL relativa ou malformada: retorna como está.
+        }
+        return url;
     }
 
     function getContentWithoutVideo(): string {
@@ -66,6 +91,41 @@ export default function MdlPage({ sequence, paused, setPaused, setbuttons }: Pro
             return "link";
         }
         return "texto";
+    }
+
+    function handleVideoError(): void {
+        const err = videoRef.current?.error;
+
+        // Códigos definidos pela especificação HTMLMediaElement (MediaError)
+        let msg: string;
+        switch (err?.code) {
+            case 1: // MEDIA_ERR_ABORTED
+                msg = "A reprodução foi interrompida. Tente recarregar a página.";
+                break;
+            case 2: // MEDIA_ERR_NETWORK
+                msg = "Houve um problema de conexão ao carregar o vídeo. Verifique sua internet e tente novamente.";
+                break;
+            case 3: // MEDIA_ERR_DECODE
+                msg = "Ocorreu um erro ao decodificar o vídeo neste navegador.";
+                break;
+            case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+            default:
+                msg = "Este vídeo não é suportado por este navegador.";
+                break;
+        }
+
+        setVideoErrorMsg(msg);
+        setVideoError(true);
+    }
+
+    function handleDownloadComplete(): void {
+        // Quando o vídeo não reproduz no navegador e o usuário baixa o arquivo
+        // pelo fallback, consideramos a aula concluída.
+        if (!completed) {
+            completeModule();
+            setCompleted(true);
+            setProgress(80); // preenche a barra de progresso (capada em 80%)
+        }
     }
 
     function play(): void {
@@ -137,6 +197,8 @@ export default function MdlPage({ sequence, paused, setPaused, setbuttons }: Pro
         setProgress(0);
         setCompleted(false);
         setIsSeeking(false);
+        setVideoError(false);
+        setVideoErrorMsg("");
 
         watchedSeconds.current = 0;
         lastTime.current = 0;
@@ -163,9 +225,44 @@ export default function MdlPage({ sequence, paused, setPaused, setbuttons }: Pro
                             onTimeUpdate={handleTimeUpdate}
                             onSeeking={handleSeeking}
                             onSeeked={handleSeeked}
+                            onError={handleVideoError}
+                            style={videoError ? { display: "none" } : undefined}
                         ></video>
 
-                        {paused && (
+                        {videoError && (
+                            <div
+                                className="rounded-3 bg-auxiliary6-project d-flex flex-column align-items-center justify-content-center text-center p-4"
+                                style={{ minHeight: 240, gap: 12 }}
+                            >
+                                <p style={{ color: "#F9F8F1", fontWeight: 600, margin: 0 }}>
+                                    {videoErrorMsg || "Não foi possível reproduzir o vídeo neste navegador."}
+                                </p>
+                                <p style={{ color: "#aaa", fontSize: 14, margin: 0 }}>
+                                    Você pode abrir ou baixar o vídeo e assistir pelo player do seu
+                                    dispositivo.
+                                </p>
+                                <a
+                                    href={getDownloadLink()}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={handleDownloadComplete}
+                                    style={{
+                                        background: "rgba(236,101,8,.1)",
+                                        border: "1px solid rgba(236,101,8,.4)",
+                                        borderRadius: 10,
+                                        padding: "10px 20px",
+                                        color: "#EC6508",
+                                        fontSize: 14,
+                                        fontWeight: 600,
+                                        textDecoration: "none",
+                                    }}
+                                >
+                                    Abrir / baixar o vídeo
+                                </a>
+                            </div>
+                        )}
+
+                        {paused && !videoError && (
                             <div
                                 className="position-absolute top-50 start-50 translate-middle cursor-pointer"
                                 onClick={play}

@@ -6,16 +6,17 @@ import { useRouter } from "next/navigation";
 import { api } from "@/shared/api/api";
 import { AuthContext } from "@/contexts/AuthContext";
 import axios from "axios";
+import { jwtDecode } from "jwt-decode";
 import {
     MdCheckCircle,
     MdError,
     MdWarning,
     MdCloudUpload,
     MdSend,
-    MdPerson,
     MdBusiness,
     MdVideoFile,
     MdShield,
+    MdDownload,
 } from "react-icons/md";
 
 const SETORES = [
@@ -42,15 +43,15 @@ const SETORES = [
 
 type Setor = (typeof SETORES)[number];
 const VIDEO_MAX_BYTES = 500 * 1024 * 1024;
+const DOC_MAX_BYTES = 50 * 1024 * 1024;
 
 interface FormState {
-    nome_completo: string;
     email: string;
-    telefone: string;
-    cpf: string;
     is_empreendedor_criativo: boolean;
     mora_no_brasil: boolean;
     idade_maior_18: boolean;
+    responsavel_legal: boolean;
+    nome_empreendimento: string;
     setor_empreendimento: Setor | "";
     setor_outros: string;
     tempo_existencia: string;
@@ -69,6 +70,7 @@ const CRITERIO_LABEL: Record<string, string> = {
     is_empreendedor_criativo: "Ser empreendedor criativo",
     mora_no_brasil: "Residir no Brasil",
     idade_maior_18: "Ter 18 anos ou mais",
+    responsavel_legal: "Ser o(a) responsável legal pelo empreendimento",
     aceite_termo_lgpd: "Aceite dos termos LGPD",
 };
 
@@ -160,7 +162,6 @@ function FileZone({
                 accept={accept}
                 style={{ display: "none" }}
                 onChange={(e) => onChange(e.target.files?.[0] ?? null)}
-                required={required}
             />
         </div>
     );
@@ -224,6 +225,74 @@ function EligCheck({
     );
 }
 
+/* extrai o e-mail (username) do token JWT para pré-preencher o campo */
+function emailDoToken(token?: string): string {
+    if (!token) return "";
+    try {
+        return jwtDecode<{ username?: string }>(token).username ?? "";
+    } catch {
+        return "";
+    }
+}
+
+const UPLOAD_MAX_TENTATIVAS = 3; // tentativas de reenvio em caso de falha de rede
+
+const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/* envia o arquivo inteiro em um único PUT à sessionUri do Google e retorna o fileId.
+   Usa apenas Content-Type (compatível com CORS) — NÃO enviar Content-Range nem Authorization,
+   pois esses headers disparam preflight que o endpoint de upload do Google bloqueia. */
+function enviarArquivo(
+    sessionUri: string,
+    file: File,
+    onProgress: (uploadedNoArquivo: number) => void,
+): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", sessionUri, true);
+        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) onProgress(e.loaded);
+        };
+        xhr.onload = () => {
+            if (xhr.status === 200 || xhr.status === 201) {
+                let id: string | undefined;
+                try {
+                    id = JSON.parse(xhr.responseText)?.id;
+                } catch {
+                    /* corpo não-JSON */
+                }
+                if (id) return resolve(id);
+                return reject(new Error("O Google não retornou o identificador do arquivo."));
+            }
+            reject(new Error(`Falha no upload ao Google (HTTP ${xhr.status}).`));
+        };
+        xhr.onerror = () => reject(new Error("Falha de rede ao enviar o arquivo."));
+        xhr.ontimeout = () => reject(new Error("Tempo esgotado ao enviar o arquivo."));
+        xhr.send(file);
+    });
+}
+
+/* faz o upload do arquivo com algumas tentativas em caso de falha transitória de rede */
+async function uploadResumable(
+    sessionUri: string,
+    file: File,
+    onProgress: (uploadedNoArquivo: number) => void,
+): Promise<string> {
+    let ultimoErro: unknown;
+    for (let tentativa = 1; tentativa <= UPLOAD_MAX_TENTATIVAS; tentativa++) {
+        try {
+            return await enviarArquivo(sessionUri, file, onProgress);
+        } catch (err) {
+            ultimoErro = err;
+            onProgress(0); // reinicia a barra para a próxima tentativa
+            if (tentativa < UPLOAD_MAX_TENTATIVAS) await espera(1000 * tentativa);
+        }
+    }
+    throw ultimoErro instanceof Error ? ultimoErro : new Error("Falha ao enviar o arquivo.");
+}
+
 /* ── telas de estado ── */
 function CardEstado({ children }: { children: React.ReactNode }) {
     return (
@@ -256,6 +325,10 @@ export default function FormularioFase2() {
         hasChecked.current = true;
 
         const userId = user.id;
+
+        // pré-preenche o e-mail assim que o usuário estiver disponível
+        const emailLogado = emailDoToken(user.token) || user.name || "";
+        if (emailLogado) setForm((prev) => ({ ...prev, email: prev.email || emailLogado }));
 
         const checkStatus = api.get<StatusResponse>("/gael/inscricoes/fase2/status");
 
@@ -299,16 +372,15 @@ export default function FormularioFase2() {
                 setProgramaConcluido(true);
             }
         });
-    }, [user.id, signOut, router]);
+    }, [user.id, user.token, user.name, signOut, router]);
 
-    const [form, setForm] = useState<FormState>({
-        nome_completo: "",
-        email: "",
-        telefone: "",
-        cpf: "",
+    const [form, setForm] = useState<FormState>(() => ({
+        email: emailDoToken(user.token),
         is_empreendedor_criativo: false,
         mora_no_brasil: false,
         idade_maior_18: false,
+        responsavel_legal: false,
+        nome_empreendimento: "",
         setor_empreendimento: "",
         setor_outros: "",
         tempo_existencia: "",
@@ -316,9 +388,8 @@ export default function FormularioFase2() {
         num_pessoas_envolvidas: "",
         renda_responsavel: "",
         aceite_termo_lgpd: false,
-    });
+    }));
 
-    const [certificado, setCertificado] = useState<File | null>(null);
     const [video, setVideo] = useState<File | null>(null);
     const [docComplementar, setDocComplementar] = useState<File | null>(null);
     const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -326,7 +397,6 @@ export default function FormularioFase2() {
     const [result, setResult] = useState<SubmitResult | null>(null);
     const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
 
-    const certRef = useRef<HTMLInputElement>(null);
     const videoRef = useRef<HTMLInputElement>(null);
     const docRef = useRef<HTMLInputElement>(null);
 
@@ -342,11 +412,16 @@ export default function FormularioFase2() {
 
     const validate = (): boolean => {
         const erros: Record<string, string> = {};
-        if (!certificado) erros.certificado_fase1 = "Certificado da Fase 1 é obrigatório.";
         if (!video) {
             erros.video_pitch = "Vídeo de pitch é obrigatório.";
         } else if (video.size > VIDEO_MAX_BYTES) {
             erros.video_pitch = "O vídeo não pode exceder 500MB.";
+        }
+        if (docComplementar && docComplementar.size > DOC_MAX_BYTES) {
+            erros.documentacao_complementar = "A documentação complementar não pode exceder 50MB.";
+        }
+        if (!form.nome_empreendimento.trim()) {
+            erros.nome_empreendimento = "Informe o nome do empreendimento.";
         }
         if (form.setor_empreendimento === "Outro" && !form.setor_outros.trim()) {
             erros.setor_outros = "Informe o setor quando selecionar 'Outro'.";
@@ -355,66 +430,116 @@ export default function FormularioFase2() {
         return Object.keys(erros).length === 0;
     };
 
+    // traduz erros do backend (iniciar-upload ou finalização) em estado de tela
+    const tratarErroBackend = (err: unknown) => {
+        console.error("[inscricao-fase2] falha no envio:", err);
+        if (axios.isAxiosError(err)) {
+            const status = err.response?.status;
+            const data = err.response?.data;
+
+            if (status === 401 || status === 403) { signOut(); router.replace("/login"); return; }
+
+            if (data?.status === "inelegivel") {
+                setResult({ type: "inelegivel", criterios_reprovados: data.criterios_reprovados ?? [] });
+            } else if (data?.status === "erro") {
+                const motivo = data.motivo ?? "Erro ao enviar inscrição.";
+                setResult({ type: "erro", motivo, campos_invalidos: data.campos_invalidos });
+                if (data.campos_invalidos?.length) {
+                    const campos = data.campos_invalidos as string[];
+                    const ce: Record<string, string> = {};
+                    const emailSemFase1 = status === 404 && campos.includes("email");
+                    campos.forEach((c: string) => {
+                        ce[c] = emailSemFase1 && c === "email" ? motivo : "Campo inválido segundo o servidor.";
+                    });
+                    setClientErrors(ce);
+                }
+            } else {
+                setResult({ type: "erro", motivo: "Erro inesperado. Tente novamente." });
+            }
+        } else if (err instanceof Error) {
+            setResult({ type: "erro", motivo: err.message });
+        } else {
+            setResult({ type: "erro", motivo: "Erro inesperado. Verifique sua conexão." });
+        }
+    };
+
+    // Fase 1: pede a sessão de upload resumable ao backend e retorna a sessionUri
+    const iniciarUpload = async (campo: "video_pitch" | "documentacao_complementar", file: File): Promise<string> => {
+        const { data } = await api.post("/gael/inscricoes/fase2/iniciar-upload", {
+            email: form.email,
+            campo,
+            nome: file.name,
+            mimeType: file.type,
+            tamanho: file.size,
+            // falha-cedo: barra inelegíveis antes de abrir a sessão de upload
+            is_empreendedor_criativo: form.is_empreendedor_criativo,
+            mora_no_brasil: form.mora_no_brasil,
+            idade_maior_18: form.idade_maior_18,
+            responsavel_legal: form.responsavel_legal,
+        });
+        return data.sessionUri as string;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setResult(null);
         if (!validate()) return;
 
-        const fd = new FormData();
-        fd.append("nome_completo", form.nome_completo);
-        fd.append("email", form.email);
-        fd.append("telefone", form.telefone);
-        fd.append("cpf", form.cpf);
-        fd.append("is_empreendedor_criativo", String(form.is_empreendedor_criativo));
-        fd.append("mora_no_brasil", String(form.mora_no_brasil));
-        fd.append("idade_maior_18", String(form.idade_maior_18));
-        fd.append("setor_empreendimento", form.setor_empreendimento);
-        if (form.setor_empreendimento === "Outro") fd.append("setor_outros", form.setor_outros);
-        fd.append("tempo_existencia", form.tempo_existencia);
-        fd.append("formalizacao", form.formalizacao);
-        fd.append("num_pessoas_envolvidas", form.num_pessoas_envolvidas);
-        fd.append("renda_responsavel", form.renda_responsavel);
-        fd.append("aceite_termo_lgpd", String(form.aceite_termo_lgpd));
-        fd.append("certificado_fase1", certificado!);
-        fd.append("video_pitch", video!);
-        if (docComplementar) fd.append("documentacao_complementar", docComplementar);
-
         setLoading(true);
         setUploadProgress(0);
 
+        // progresso combinado do vídeo + documentação (PUT direto ao Google)
+        const totalBytes = video!.size + (docComplementar?.size ?? 0);
+        let bytesConcluidos = 0;
+        const reportar = (uploadedNoArquivo: number) => {
+            const done = bytesConcluidos + uploadedNoArquivo;
+            setUploadProgress(Math.min(100, Math.round((done / (totalBytes || 1)) * 100)));
+        };
+
         try {
-            const response = await api.post("/gael/inscricoes/fase2", fd, {
-                timeout: 30 * 60 * 1000,
-                onUploadProgress: (evt) => {
-                    if (evt.total) setUploadProgress(Math.round((evt.loaded * 100) / evt.total));
-                },
+            // ── vídeo (obrigatório) ──
+            const sessVideo = await iniciarUpload("video_pitch", video!);
+            const videoFileId = await uploadResumable(sessVideo, video!, reportar);
+            bytesConcluidos += video!.size;
+
+            // ── documentação complementar (opcional) ──
+            let documentacaoFileId: string | undefined;
+            if (docComplementar) {
+                const sessDoc = await iniciarUpload("documentacao_complementar", docComplementar);
+                documentacaoFileId = await uploadResumable(sessDoc, docComplementar, reportar);
+                bytesConcluidos += docComplementar.size;
+            }
+
+            setUploadProgress(100);
+
+            // ── finalização da inscrição ──
+            const payload: Record<string, unknown> = {
+                email: form.email,
+                is_empreendedor_criativo: form.is_empreendedor_criativo,
+                mora_no_brasil: form.mora_no_brasil,
+                idade_maior_18: form.idade_maior_18,
+                responsavel_legal: form.responsavel_legal,
+                nome_empreendimento: form.nome_empreendimento,
+                setor_empreendimento: form.setor_empreendimento,
+                tempo_existencia: form.tempo_existencia,
+                formalizacao: form.formalizacao,
+                num_pessoas_envolvidas: form.num_pessoas_envolvidas,
+                renda_responsavel: form.renda_responsavel,
+                aceite_termo_lgpd: form.aceite_termo_lgpd,
+                setor_outros: form.setor_empreendimento === "Outro" ? form.setor_outros : "",
+                video_file_id: videoFileId,
+            };
+            if (documentacaoFileId) payload.documentacao_file_id = documentacaoFileId;
+
+            const response = await api.post("/gael/inscricoes/fase2/v2", payload, {
+                timeout: 5 * 60 * 1000,
             });
 
             if (response.data.status === "ok") {
                 setResult({ type: "ok", inscricao_id: response.data.inscricao_id });
             }
         } catch (err: unknown) {
-            if (axios.isAxiosError(err)) {
-                const status = err.response?.status;
-                const data = err.response?.data;
-
-                if (status === 401) { signOut(); router.replace("/login"); return; }
-
-                if (data?.status === "inelegivel") {
-                    setResult({ type: "inelegivel", criterios_reprovados: data.criterios_reprovados ?? [] });
-                } else if (data?.status === "erro") {
-                    setResult({ type: "erro", motivo: data.motivo ?? "Erro ao enviar inscrição.", campos_invalidos: data.campos_invalidos });
-                    if (data.campos_invalidos?.length) {
-                        const ce: Record<string, string> = {};
-                        (data.campos_invalidos as string[]).forEach((c: string) => { ce[c] = "Campo inválido segundo o servidor."; });
-                        setClientErrors(ce);
-                    }
-                } else {
-                    setResult({ type: "erro", motivo: "Erro inesperado. Tente novamente." });
-                }
-            } else {
-                setResult({ type: "erro", motivo: "Erro inesperado. Verifique sua conexão." });
-            }
+            tratarErroBackend(err);
         } finally {
             setLoading(false);
         }
@@ -455,6 +580,28 @@ export default function FormularioFase2() {
                     </div>
                 )}
                 <p style={{ color: "#666", fontSize: 12, marginTop: 16 }}>Guarde este código para acompanhamento.</p>
+                <a
+                    href="/gael/regras_participacao_faseII.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 10,
+                        background: "rgba(236,101,8,.1)",
+                        border: "1px solid rgba(236,101,8,.4)",
+                        borderRadius: 10,
+                        padding: "12px 20px",
+                        marginTop: 20,
+                        color: "#EC6508",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        textDecoration: "none",
+                    }}
+                >
+                    <MdDownload size={20} color="#EC6508" style={{ flexShrink: 0 }} />
+                    Baixe todas as regras da fase II clicando aqui
+                </a>
             </CardEstado>
         );
     }
@@ -469,6 +616,28 @@ export default function FormularioFase2() {
                     <span style={{ color: "#EC6508", fontWeight: 700, fontSize: 18, letterSpacing: 1 }}>{result.inscricao_id}</span>
                 </div>
                 <p style={{ color: "#666", fontSize: 12, marginTop: 16 }}>Guarde este código para acompanhamento.</p>
+                <a
+                    href="/gael/regras_participacao_faseII.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 10,
+                        background: "rgba(236,101,8,.1)",
+                        border: "1px solid rgba(236,101,8,.4)",
+                        borderRadius: 10,
+                        padding: "12px 20px",
+                        marginTop: 20,
+                        color: "#EC6508",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        textDecoration: "none",
+                    }}
+                >
+                    <MdDownload size={20} color="#EC6508" style={{ flexShrink: 0 }} />
+                    Baixe todas as regras da fase II clicando aqui
+                </a>
             </CardEstado>
         );
     }
@@ -518,7 +687,7 @@ export default function FormularioFase2() {
                 <p style={{ color: "rgba(255,255,255,.7)", fontSize: 12, margin: "0 0 4px", letterSpacing: 1, textTransform: "uppercase" }}>
                     Cria Mais
                 </p>
-                <h2 style={{ color: "#fff", fontWeight: 700, fontSize: 24, margin: 0 }}>Inscrição — Fase 2</h2>
+                <h2 style={{ color: "#fff", fontWeight: 700, fontSize: 24, margin: 0 }}>A fase II começa agora!</h2>
                 <p style={{ color: "rgba(255,255,255,.8)", fontSize: 13, marginTop: 6, marginBottom: 0 }}>
                     Preencha todos os campos obrigatórios (<span style={{ color: "#fff" }}>*</span>) e envie sua inscrição.
                 </p>
@@ -547,42 +716,29 @@ export default function FormularioFase2() {
                     </div>
                 )}
 
-                {/* ── 1. Dados pessoais ── */}
-                <div style={sectionCard}>
-                    <p style={sectionTitle}>
-                        <MdPerson size={18} color="#EC6508" />
-                        Dados pessoais
-                    </p>
-                    <div className="row">
-                        <Form.Group className="mb-3 col-lg-6" controlId="nome_completo">
-                            <Form.Label style={labelStyle}>Nome completo <span style={{ color: "#EC6508" }}>*</span></Form.Label>
-                            <Form.Control type="text" name="nome_completo" className={inputCls("nome_completo")}
-                                value={form.nome_completo} onChange={handleText} placeholder="Nome completo" required />
-                            {fe("nome_completo") && <div className="invalid-feedback">{fe("nome_completo")}</div>}
-                        </Form.Group>
-
-                        <Form.Group className="mb-3 col-lg-6" controlId="email">
-                            <Form.Label style={labelStyle}>E-mail <span style={{ color: "#EC6508" }}>*</span></Form.Label>
-                            <Form.Control type="email" name="email" className={inputCls("email")}
-                                value={form.email} onChange={handleText} placeholder="seuemail@exemplo.com" required />
-                            {fe("email") && <div className="invalid-feedback">{fe("email")}</div>}
-                        </Form.Group>
-
-                        <Form.Group className="mb-3 col-lg-6" controlId="telefone">
-                            <Form.Label style={labelStyle}>Telefone <span style={{ color: "#EC6508" }}>*</span></Form.Label>
-                            <Form.Control type="tel" name="telefone" className={inputCls("telefone")}
-                                value={form.telefone} onChange={handleText} placeholder="(11) 99999-9999" required />
-                            {fe("telefone") && <div className="invalid-feedback">{fe("telefone")}</div>}
-                        </Form.Group>
-
-                        <Form.Group className="mb-0 col-lg-6" controlId="cpf">
-                            <Form.Label style={labelStyle}>CPF <span style={{ color: "#EC6508" }}>*</span></Form.Label>
-                            <Form.Control type="text" name="cpf" className={inputCls("cpf")}
-                                value={form.cpf} onChange={handleText} placeholder="000.000.000-00" required />
-                            {fe("cpf") && <div className="invalid-feedback">{fe("cpf")}</div>}
-                        </Form.Group>
-                    </div>
-                </div>
+                {/* ── Regras da Fase II ── */}
+                <a
+                    href="/gael/regras_participacao_faseII.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        background: "rgba(236,101,8,.1)",
+                        border: "1px solid rgba(236,101,8,.4)",
+                        borderRadius: 10,
+                        padding: "14px 16px",
+                        marginBottom: 20,
+                        color: "#EC6508",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        textDecoration: "none",
+                    }}
+                >
+                    <MdDownload size={20} color="#EC6508" style={{ flexShrink: 0 }} />
+                    Baixe todas as regras da fase II clicando aqui
+                </a>
 
                 {/* ── 2. Elegibilidade ── */}
                 <div style={sectionCard}>
@@ -596,15 +752,24 @@ export default function FormularioFase2() {
                         label="Resido no Brasil" checked={form.mora_no_brasil} onChange={handleCheck} />
                     <EligCheck id="idade_maior_18" name="idade_maior_18"
                         label="Tenho 18 anos ou mais" checked={form.idade_maior_18} onChange={handleCheck} />
+                    <EligCheck id="responsavel_legal" name="responsavel_legal"
+                        label="Sou o(a) responsável legal pelo empreendimento" checked={form.responsavel_legal} onChange={handleCheck} />
                 </div>
 
                 {/* ── 3. Empreendimento ── */}
                 <div style={sectionCard}>
                     <p style={sectionTitle}>
                         <MdBusiness size={18} color="#EC6508" />
-                        Sobre o empreendimento
+                        Sobre o EMPREENDIMENTO
                     </p>
                     <div className="row">
+                        <Form.Group className="mb-3 col-lg-6" controlId="nome_empreendimento">
+                            <Form.Label style={labelStyle}>Nome do empreendimento <span style={{ color: "#EC6508" }}>*</span></Form.Label>
+                            <Form.Control type="text" name="nome_empreendimento" className={inputCls("nome_empreendimento")}
+                                value={form.nome_empreendimento} onChange={handleText} placeholder="Ex: Padaria da Ana" required />
+                            {fe("nome_empreendimento") && <div className="invalid-feedback">{fe("nome_empreendimento")}</div>}
+                        </Form.Group>
+
                         <Form.Group className="mb-3 col-lg-6" controlId="setor_empreendimento">
                             <Form.Label style={labelStyle}>Setor <span style={{ color: "#EC6508" }}>*</span></Form.Label>
                             <Form.Select name="setor_empreendimento" className={inputCls("setor_empreendimento")}
@@ -638,19 +803,19 @@ export default function FormularioFase2() {
                         </Form.Group>
 
                         <Form.Group className="mb-3 col-lg-6" controlId="formalizacao">
-                            <Form.Label style={labelStyle}>Formalização <span style={{ color: "#EC6508" }}>*</span></Form.Label>
+                            <Form.Label style={labelStyle}>Tipo de Formalização <span style={{ color: "#EC6508" }}>*</span></Form.Label>
                             <Form.Select name="formalizacao" className={inputCls("formalizacao")}
                                 value={form.formalizacao} onChange={handleText} required>
                                 <option value="">Selecione…</option>
-                                <option value="MEI">MEI</option>
-                                <option value="Microempresa">Microempresa</option>
-                                <option value="Não formalizado">Não formalizado</option>
+                                <option value="MEI">Microempreendedor Individual - MEI (faturamento até R$ 81 mil)</option>
+                                <option value="Microempresa">Micro Empresa - ME (faturamento anual até R$ 360 mil)</option>
+                                <option value="Não formalizado">Empreendimento não formalizado</option>
                             </Form.Select>
                             {fe("formalizacao") && <div className="invalid-feedback">{fe("formalizacao")}</div>}
                         </Form.Group>
 
                         <Form.Group className="mb-3 col-lg-6" controlId="num_pessoas_envolvidas">
-                            <Form.Label style={labelStyle}>Pessoas envolvidas <span style={{ color: "#EC6508" }}>*</span></Form.Label>
+                            <Form.Label style={labelStyle}>Número de Pessoas Envolvidas (sócios e/ou colaboradores) <span style={{ color: "#EC6508" }}>*</span></Form.Label>
                             <Form.Select name="num_pessoas_envolvidas" className={inputCls("num_pessoas_envolvidas")}
                                 value={form.num_pessoas_envolvidas} onChange={handleText} required>
                                 <option value="">Selecione…</option>
@@ -663,9 +828,14 @@ export default function FormularioFase2() {
                         </Form.Group>
 
                         <Form.Group className="mb-0 col-lg-6" controlId="renda_responsavel">
-                            <Form.Label style={labelStyle}>Renda do responsável (R$) <span style={{ color: "#EC6508" }}>*</span></Form.Label>
-                            <Form.Control type="text" name="renda_responsavel" className={inputCls("renda_responsavel")}
-                                value={form.renda_responsavel} onChange={handleText} placeholder="Ex: 3500" required />
+                            <Form.Label style={labelStyle}>Renda do Responsável pelo Empreendimento (R$) <span style={{ color: "#EC6508" }}>*</span></Form.Label>
+                            <Form.Select name="renda_responsavel" className={inputCls("renda_responsavel")}
+                                value={form.renda_responsavel} onChange={handleText} required>
+                                <option value="">Selecione…</option>
+                                <option value="vem principalmente do empreendimento">vem principalmente do empreendimento</option>
+                                <option value="vem de modo complementar do empreendimento">vem de modo complementar do empreendimento</option>
+                                <option value="não possui renda com o empreendimento">não possui renda com o empreendimento</option>
+                            </Form.Select>
                             {fe("renda_responsavel") && <div className="invalid-feedback">{fe("renda_responsavel")}</div>}
                         </Form.Group>
                     </div>
@@ -680,18 +850,6 @@ export default function FormularioFase2() {
                     <div className="row">
                         <div className="col-lg-6">
                             <FileZone
-                                label="Certificado da Fase 1"
-                                accept="image/*,.pdf"
-                                file={certificado}
-                                onChange={setCertificado}
-                                error={fe("certificado_fase1")}
-                                required
-                                hint="Imagem ou PDF"
-                                inputRef={certRef as React.RefObject<HTMLInputElement>}
-                            />
-                        </div>
-                        <div className="col-lg-6">
-                            <FileZone
                                 label="Vídeo de pitch (3–5 min, máx. 500 MB)"
                                 accept="video/*"
                                 file={video}
@@ -704,10 +862,11 @@ export default function FormularioFase2() {
                         </div>
                         <div className="col-lg-6">
                             <FileZone
-                                label="Documentação complementar"
+                                label="Material Complementar: O que mais precisamos saber sobre seu empreendimento? (opcional)"
                                 file={docComplementar}
                                 onChange={setDocComplementar}
-                                hint="Opcional — qualquer formato"
+                                error={fe("documentacao_complementar")}
+                                hint="Você pode inserir: portfólios, vídeos, link de acesso a site ou perfil em redes sociais do empreendimento — máx. 50 MB"
                                 inputRef={docRef as React.RefObject<HTMLInputElement>}
                             />
                         </div>
@@ -745,7 +904,7 @@ export default function FormularioFase2() {
                                 Programa não concluído
                             </p>
                             <p style={{ color: "#c8a84a", fontSize: 13, margin: "2px 0 0" }}>
-                                Você precisa concluir 100% do programa para enviar sua inscrição.
+                                Você precisa concluir 100% das 4 primeiras trilhas do programa para enviar sua inscrição.
                                 Seu progresso atual é de <strong>{Math.round(progressoGeral)}%</strong>.
                             </p>
                         </div>
@@ -767,10 +926,10 @@ export default function FormularioFase2() {
 
                 <Button
                     type="submit"
-                    disabled={loading || !form.aceite_termo_lgpd || !programaConcluido}
+                    disabled={loading || !form.aceite_termo_lgpd || !form.responsavel_legal || !programaConcluido}
                     style={{
                         width: "100%",
-                        background: form.aceite_termo_lgpd && !loading && programaConcluido ? "linear-gradient(135deg,#EC6508,#d96215)" : "#444",
+                        background: form.aceite_termo_lgpd && form.responsavel_legal && !loading && programaConcluido ? "linear-gradient(135deg,#EC6508,#d96215)" : "#444",
                         border: "none",
                         borderRadius: 10,
                         padding: "14px 0",
@@ -782,7 +941,7 @@ export default function FormularioFase2() {
                         justifyContent: "center",
                         gap: 8,
                         transition: "opacity .2s",
-                        opacity: loading || !form.aceite_termo_lgpd || !programaConcluido ? 0.7 : 1,
+                        opacity: loading || !form.aceite_termo_lgpd || !form.responsavel_legal || !programaConcluido ? 0.7 : 1,
                     }}
                 >
                     {loading
