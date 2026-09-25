@@ -1,7 +1,8 @@
 {
   "projects": {
     "default": "lms-gael",
-    "y": "lms-gael"
+    "y": "lms-gael",
+    "gael": "lms-gael"
   },
   "targets": {},
   "etags": {}

@@ -87,7 +87,7 @@ export default function Header() {
               Certificados
             </a>
 
-            <a href="/inscricao-fase2" className="ps-2 icon-18-sidebar header-item fs-12 fw-700 py-2 div-icon-sidebar text-white">
+            <a href="/carreiras" className="ps-2 icon-18-sidebar header-item fs-12 fw-700 py-2 div-icon-sidebar text-white">
               <MdOutlineAssignment color="#fff" size={18} className="me-2" strokeWidth={0.5} />
               Inscrição Fase 2
             </a>
