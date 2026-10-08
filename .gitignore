@@ -54,3 +54,6 @@ firebase-debug.log*
 firebase-debug.*.log*
 
 .vscode
+
+# dados pessoais de inscritos (nao versionar)
+inscricaoGael.csv
