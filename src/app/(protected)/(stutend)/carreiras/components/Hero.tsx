@@ -6,9 +6,9 @@ import { LoaderContext } from "@/contexts/LoaderContext";
 import { ProgressBar } from "react-bootstrap";
 import { RiPlayMiniLine } from "react-icons/ri";
 import { api } from "@/shared/api/api";
-import bannerDesktop from "/public/gael/home_banner_desktop.png";
-import bannerMobile from "/public/gael/banner_home_mobile.png";
-import cardDireita from "/public/gael/home_card_direita.png";
+import bannerDesktop from "/public/gael/banner_plataforma_cria_mais_1209x320_resultado.png";
+import bannerMobile from "/public/gael/banner_plataforma_cria_mais_649x314_resultado.png";
+import cardDireita from "/public/gael/banner_plataforma_cria_mais_649x314_resultado.png";
 
 interface Course {
     id: number;
@@ -77,11 +77,11 @@ export default function Hero() {
         <div className="row hero-carreiras">
             <div className="col-12 p-xxl-0 m-xxl-0">
                 <div className="row row-gap-4 mt-0">
-                    <a href="/carreiras" className="col-12 px-3.5 d-lg-block d-none">
+                    <a href="/gael/Resultado_publicação_FASE 2_CRIA MAIS.pdf" target="_blank" rel="noopener noreferrer" className="col-12 px-3.5 d-lg-block d-none">
                         <Image src={bannerDesktop.src} width={0} height={0} className="w-100 h-auto rounded-3 shadow" alt="Banner Gael" />
                     </a>
-                    <a href="/carreiras" className="col-12 px-3.5 d-lg-none">
-                        <Image src={bannerMobile.src} width={0} height={0} className="w-100 h-auto rounded-3 shadow" alt="Banner Gael" />
+                    <a href="/gael/Resultado_publicação_FASE 2_CRIA MAIS.pdf" target="_blank" rel="noopener noreferrer" className="col-12 px-3.5 d-lg-none">
+                        <Image src={bannerDesktop.src} width={0} height={0} className="w-100 h-auto rounded-3 shadow" alt="Banner Gael" />
                     </a>
                     <div className="col-xxl-6 col-12 card-hero d-block ">
                         <div className="d-flex box-shadow-hero rounded-3  h-100">
@@ -120,16 +120,11 @@ export default function Hero() {
                         </div>
                     </div>
 
-                    <div className="col-xxl-6 col-12 card-hero">
+                    <a href="/gael/Resultado_publicação_FASE 2_CRIA MAIS.pdf" target="_blank" rel="noopener noreferrer" className="col-xxl-6 col-12 card-hero">
                         <div className="position-relative w-100 h-100 rounded-3 shadow overflow-hidden">
                             <Image src={cardDireita.src} width={0} height={0} className="w-100 h-100 object-fit-cover" alt="Card direita" style={{ minHeight: '220px' }} />
-                            <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center card-direita justify-content-center p-4">
-                                <p className="text-white  text-center m-0" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.7)', fontWeight: 100 }}>
-                                    Sua criatividade tem valor! E quem cria precisa aprender a cuidar do que constrói
-                                </p>
-                            </div>
                         </div>
-                    </div>
+                    </a>
                 </div>
             </div>
         </div>
