@@ -72,6 +72,25 @@ export default function Aula() {
         receiveLesson = true;
     }
 
+    function notifyCohortProgress() {
+        if (!user?.id) return;
+        // fire and forget: usa fetch direto (fora dos interceptors do `api`) para
+        // não logar erro no Firebase nem acionar o logout global de sessão expirada.
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/progress/user-cohort`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...(user.token ? { "Authorization": `Bearer ${user.token}` } : {})
+            },
+            body: JSON.stringify({
+                userid: user.id,
+                cohortid: 160,
+                subcourse_scope: "all",
+                exclude_courses: "513,514"
+            })
+        }).catch(() => { /* ignora: não bloqueia a UX */ });
+    }
+
     function safeAtob(value?: string | null) {
         try {
             return value ? atob(value) : "";
@@ -140,7 +159,10 @@ export default function Aula() {
                     "Authorization": `Bearer ${user.token}`
                 }
             })
-                .then((res) => console.log("Módulo concluído:", res))
+                .then((res) => {
+                    console.log("Módulo concluído:", res);
+                    notifyCohortProgress();
+                })
                 .catch((err) => console.error("Erro ao concluir módulo:", err));
         }
 
