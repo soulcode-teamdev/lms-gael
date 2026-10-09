@@ -69,6 +69,24 @@ export default function MdlPage({ sequence, paused, setPaused, setbuttons }: Pro
         }
         return url;
     }
+    function notifyCohortProgress() {
+        if (!user?.id) return;
+        // fire and forget: usa fetch direto (fora dos interceptors do `api`) para
+        // não logar erro no Firebase nem acionar o logout global de sessão expirada.
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/progress/user-cohort`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...(user.token ? { "Authorization": `Bearer ${user.token}` } : {})
+            },
+            body: JSON.stringify({
+                userid: user.id,
+                cohortid: 160,
+                subcourse_scope: "all",
+                exclude_courses: "513,514"
+            })
+        }).catch(() => { /* ignora: não bloqueia a UX */ });
+    }
 
     function getContentWithoutVideo(): string {
         return sequence.data_module.content
@@ -183,6 +201,8 @@ export default function MdlPage({ sequence, paused, setPaused, setbuttons }: Pro
             )
             .then((res) => {
                 console.log("Módulo concluído via vídeo!", res);
+                notifyCohortProgress();
+
             })
             .catch((err) => {
                 console.error("Erro ao concluir módulo:", err);
@@ -316,7 +336,7 @@ export default function MdlPage({ sequence, paused, setPaused, setbuttons }: Pro
                                 </svg>
                                 {label}
                             </a>
-                            {setbuttons()}  
+                            {setbuttons()}
                         </>
                     );
                 }
